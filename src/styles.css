@@ -1,0 +1,237 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+/*
+ * KAYRA PERFUMES — design system
+ * Palette: ink / charcoal, ivory, pearl, walnut, restrained brass.
+ * Type: Cormorant Garamond (brand moments) + Jost (UI & product info).
+ * All colours are oklch semantic tokens. Never hardcode colours in components.
+ */
+
+@theme inline {
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-sans: "Jost", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ivory: var(--ivory);
+  --color-pearl: var(--pearl);
+  --color-walnut: var(--walnut);
+  --color-brass: var(--brass);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-muted: var(--on-ink-muted);
+}
+
+:root {
+  --radius: 3px;
+
+  --ink: oklch(0.17 0.008 60);
+  --ink-soft: oklch(0.24 0.01 60);
+  --ivory: oklch(0.97 0.008 85);
+  --pearl: oklch(0.93 0.009 85);
+  --walnut: oklch(0.42 0.045 55);
+  --brass: oklch(0.74 0.075 80);
+  --on-ink: oklch(0.95 0.006 85);
+  --on-ink-muted: oklch(0.72 0.012 85);
+
+  --background: var(--ivory);
+  --foreground: var(--ink);
+  --card: oklch(0.99 0.005 85);
+  --card-foreground: var(--ink);
+  --popover: var(--ivory);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--on-ink);
+  --secondary: var(--pearl);
+  --secondary-foreground: var(--ink);
+  --muted: var(--pearl);
+  --muted-foreground: oklch(0.48 0.012 70);
+  --accent: var(--walnut);
+  --accent-foreground: var(--on-ink);
+  --destructive: oklch(0.5 0.15 27);
+  --destructive-foreground: var(--on-ink);
+  --border: oklch(0.86 0.01 80);
+  --input: oklch(0.86 0.01 80);
+  --ring: var(--walnut);
+
+  --shadow-elevated: 0 30px 80px -40px oklch(0.17 0.008 60 / 0.45);
+  --ease-luxe: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  blockquote {
+    font-family: var(--font-serif);
+    font-weight: 300;
+  }
+
+  ::selection {
+    background: var(--color-walnut);
+    color: var(--color-on-ink);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-walnut);
+    outline-offset: 3px;
+  }
+}
+
+/* ---------- Brand utilities ---------- */
+
+@utility kayra-wordmark {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+@utility eyebrow {
+  font-size: 0.625rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+@utility display-xl {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  font-size: clamp(3rem, 14vw, 8.5rem);
+}
+
+@utility display-lg {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  line-height: 1.02;
+  font-size: clamp(2.25rem, 7vw, 4.5rem);
+}
+
+@utility measure {
+  max-width: 34ch;
+}
+
+/* Slow cinematic reveals, driven by IntersectionObserver (data-reveal) */
+@utility reveal {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition:
+    opacity 1.1s var(--ease-luxe),
+    transform 1.1s var(--ease-luxe);
+  will-change: opacity, transform;
+}
+
+@utility reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+@utility hairline {
+  border-top: 1px solid var(--color-border);
+}
+
+@keyframes kayra-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kayra-veil {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes kayra-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -1.5%, 0) scale(1.03);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@utility stage-rise {
+  animation: kayra-rise 1.2s var(--ease-luxe) both;
+}
+
+@utility stage-veil {
+  animation: kayra-veil 2s var(--ease-luxe) both;
+}
+
+@utility stage-drift {
+  animation: kayra-drift 26s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
