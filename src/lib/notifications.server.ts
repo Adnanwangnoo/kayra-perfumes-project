@@ -21,7 +21,8 @@ export type NotificationTemplate =
   | "payment_confirmed"
   | "payment_failed"
   | "order_shipped"
-  | "order_delivered";
+  | "order_delivered"
+  | "abandoned_cart";
 
 export type OrderRecord = {
   id: string;
@@ -52,6 +53,11 @@ function copy(template: NotificationTemplate, order: OrderRecord) {
       return {
         subject: `We've received your order ${order.order_ref}`,
         body: `Hi ${first}, thank you for choosing ${BRAND_NAME}. Your order ${order.order_ref} for ${rupees(order.total)} has been received and is awaiting payment confirmation. We'll write again the moment it's confirmed.`,
+      };
+    case "abandoned_cart":
+      return {
+        subject: `Your bag is still waiting, ${first}`,
+        body: `Hi ${first}, you left order ${order.order_ref} (${rupees(order.total)}) without finishing payment. Nothing has been charged, and your bag is saved — just reply to this message or come back to the site to complete it whenever you're ready.`,
       };
     case "payment_confirmed":
       return {

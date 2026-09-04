@@ -351,3 +351,29 @@ export async function markOrderFailedByRef(ref: string, reason: string) {
   if (!order) return null;
   return markOrderFailed(order.id, { reason, source: "client_report" });
 }
+
+/**
+ * Abandoned-cart sweep — finds orders left unpaid for a while and sends one
+ * "your bag is still waiting" reminder each. Safe to call as often as you
+ * like: the notifications table has a unique (order, channel, template)
+ * constraint, so notifyOrder() silently skips an order that's already been
+ * reminded, no matter how many times this sweep runs.
+ */
+export async function sweepAbandonedCarts() {
+  const remindAfter = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1 hour old
+  const ignoreOlderThan = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(); // don't nag on week-old carts
+
+  const { data: candidates } = await supabaseAdmin
+    .from("orders")
+    .select("*")
+    .eq("payment_status", "pending")
+    .lte("created_at", remindAfter)
+    .gte("created_at", ignoreOlderThan);
+
+  if (!candidates?.length) return { swept: 0 };
+
+  for (const order of candidates) {
+    await notifyOrder(order as OrderRecord, "abandoned_cart");
+  }
+  return { swept: candidates.length };
+}

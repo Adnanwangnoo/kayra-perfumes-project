@@ -16,6 +16,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as FragranceSlugRouteImport } from './routes/fragrance.$slug'
+import { Route as ApiPublicHooksAbandonedCartSweepRouteImport } from './routes/api/public/hooks/abandoned-cart-sweep'
 import { Route as ApiPublicHooksShipmentRouteImport } from './routes/api/public/hooks/shipment'
 import { Route as ApiPublicWebhooksRazorpayRouteImport } from './routes/api/public/webhooks/razorpay'
 
@@ -54,6 +55,12 @@ const FragranceSlugRoute = FragranceSlugRouteImport.update({
   path: '/fragrance/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksAbandonedCartSweepRoute =
+  ApiPublicHooksAbandonedCartSweepRouteImport.update({
+    id: '/api/public/hooks/abandoned-cart-sweep',
+    path: '/api/public/hooks/abandoned-cart-sweep',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksShipmentRoute = ApiPublicHooksShipmentRouteImport.update({
   id: '/api/public/hooks/shipment',
   path: '/api/public/hooks/shipment',
@@ -74,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/fragrance/$slug': typeof FragranceSlugRoute
+  '/api/public/hooks/abandoned-cart-sweep': typeof ApiPublicHooksAbandonedCartSweepRoute
   '/api/public/hooks/shipment': typeof ApiPublicHooksShipmentRoute
   '/api/public/webhooks/razorpay': typeof ApiPublicWebhooksRazorpayRoute
 }
@@ -85,6 +93,7 @@ export interface FileRoutesByTo {
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/fragrance/$slug': typeof FragranceSlugRoute
+  '/api/public/hooks/abandoned-cart-sweep': typeof ApiPublicHooksAbandonedCartSweepRoute
   '/api/public/hooks/shipment': typeof ApiPublicHooksShipmentRoute
   '/api/public/webhooks/razorpay': typeof ApiPublicWebhooksRazorpayRoute
 }
@@ -97,6 +106,7 @@ export interface FileRoutesById {
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/fragrance/$slug': typeof FragranceSlugRoute
+  '/api/public/hooks/abandoned-cart-sweep': typeof ApiPublicHooksAbandonedCartSweepRoute
   '/api/public/hooks/shipment': typeof ApiPublicHooksShipmentRoute
   '/api/public/webhooks/razorpay': typeof ApiPublicWebhooksRazorpayRoute
 }
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sitemap.xml'
     | '/fragrance/$slug'
+    | '/api/public/hooks/abandoned-cart-sweep'
     | '/api/public/hooks/shipment'
     | '/api/public/webhooks/razorpay'
   fileRoutesByTo: FileRoutesByTo
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sitemap.xml'
     | '/fragrance/$slug'
+    | '/api/public/hooks/abandoned-cart-sweep'
     | '/api/public/hooks/shipment'
     | '/api/public/webhooks/razorpay'
   id:
@@ -132,6 +144,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sitemap.xml'
     | '/fragrance/$slug'
+    | '/api/public/hooks/abandoned-cart-sweep'
     | '/api/public/hooks/shipment'
     | '/api/public/webhooks/razorpay'
   fileRoutesById: FileRoutesById
@@ -144,6 +157,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   FragranceSlugRoute: typeof FragranceSlugRoute
+  ApiPublicHooksAbandonedCartSweepRoute: typeof ApiPublicHooksAbandonedCartSweepRoute
   ApiPublicHooksShipmentRoute: typeof ApiPublicHooksShipmentRoute
   ApiPublicWebhooksRazorpayRoute: typeof ApiPublicWebhooksRazorpayRoute
 }
@@ -199,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FragranceSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/abandoned-cart-sweep': {
+      id: '/api/public/hooks/abandoned-cart-sweep'
+      path: '/api/public/hooks/abandoned-cart-sweep'
+      fullPath: '/api/public/hooks/abandoned-cart-sweep'
+      preLoaderRoute: typeof ApiPublicHooksAbandonedCartSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/shipment': {
       id: '/api/public/hooks/shipment'
       path: '/api/public/hooks/shipment'
@@ -224,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   FragranceSlugRoute: FragranceSlugRoute,
+  ApiPublicHooksAbandonedCartSweepRoute: ApiPublicHooksAbandonedCartSweepRoute,
   ApiPublicHooksShipmentRoute: ApiPublicHooksShipmentRoute,
   ApiPublicWebhooksRazorpayRoute: ApiPublicWebhooksRazorpayRoute,
 }

@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/public/hooks/abandoned-cart-sweep", "schedule": "0 12 * * *" }
+  ]
+}
