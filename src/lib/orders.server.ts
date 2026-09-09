@@ -62,12 +62,19 @@ export async function logOrderEvent(
   await supabaseAdmin.from("order_events").insert({ order_id: orderId, event, detail });
 }
 
-export async function createOrder(input: { lines: OrderLineInput[]; customer: CustomerInput }) {
+export async function createOrder(input: {
+  lines: OrderLineInput[];
+  customer: CustomerInput;
+  paymentMethod?: "online" | "cod";
+}) {
   const pricing = priceOrder(input.lines);
   if (pricing.lines.length === 0) throw new Error("empty_order");
 
   const ref = orderRef();
-  const provider = getPaymentProvider();
+  // COD is always the "manual" provider by design — no gateway involved.
+  // "online" uses whatever's actually configured (Razorpay, or a safe
+  // fallback to manual if it isn't).
+  const provider = input.paymentMethod === "cod" ? getProviderByName("manual") : getPaymentProvider();
 
   let payment;
   try {

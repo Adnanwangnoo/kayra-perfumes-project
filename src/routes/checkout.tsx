@@ -64,6 +64,7 @@ function Checkout() {
       const order = await submit({
         data: {
           lines: cart.resolved.map((l) => ({ sku: l.sku, quantity: l.quantity })),
+          paymentMethod: String(form.get("paymentMethod") ?? "online") as "online" | "cod",
           customer: {
             name: String(form.get("name") ?? ""),
             email: String(form.get("email") ?? ""),
@@ -229,6 +230,24 @@ function Checkout() {
               className="mt-2 w-full border border-border bg-transparent p-4 text-sm outline-none transition-colors focus:border-foreground"
             />
           </div>
+
+          <fieldset className="sm:col-span-2 space-y-3 border-t border-border pt-6">
+            <legend className="eyebrow text-muted-foreground">Payment method</legend>
+            <label className="flex items-start gap-3 text-sm text-muted-foreground">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="online"
+                defaultChecked
+                className="mt-1 accent-walnut"
+              />
+              Pay online (Razorpay)
+            </label>
+            <label className="flex items-start gap-3 text-sm text-muted-foreground">
+              <input type="radio" name="paymentMethod" value="cod" className="mt-1 accent-walnut" />
+              Cash on delivery
+            </label>
+          </fieldset>
 
           <fieldset className="sm:col-span-2 space-y-3 border-t border-border pt-6">
             <legend className="eyebrow text-muted-foreground">Stay in touch</legend>

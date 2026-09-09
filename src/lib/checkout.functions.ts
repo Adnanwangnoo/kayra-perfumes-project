@@ -6,6 +6,7 @@ const orderSchema = z.object({
     .array(z.object({ sku: z.string().min(2).max(32), quantity: z.number().int().min(1).max(20) }))
     .min(1)
     .max(20),
+  paymentMethod: z.enum(["online", "cod"]).default("online"),
   customer: z.object({
     name: z.string().trim().min(2).max(80),
     email: z.string().trim().email().max(120),
