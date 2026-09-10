@@ -8,7 +8,7 @@ function checkPassword(password: string) {
   return Boolean(secret) && password === secret;
 }
 
-/** Lists recent orders with full contact/address details for the admin page. */
+/** Lists recent orders with full contact/address/items detail for the admin page. */
 export const listOrders = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => authSchema.parse(data))
   .handler(async ({ data }) => {
@@ -18,7 +18,7 @@ export const listOrders = createServerFn({ method: "POST" })
     const { data: orders, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, order_ref, customer_name, customer_email, customer_phone, address, city, state, pincode, total, payment_status, fulfilment_status, payment_provider, tracking_number, courier, created_at",
+        "id, order_ref, customer_name, customer_email, customer_phone, address, city, state, pincode, total, advance_amount, payment_status, fulfilment_status, payment_provider, tracking_number, courier, created_at, order_items(product_name, size, quantity)",
       )
       .order("created_at", { ascending: false })
       .limit(200);
@@ -67,19 +67,26 @@ const shipmentSchema = z.object({
   status: z.enum(["packed", "shipped", "delivered", "cancelled"]),
   trackingNumber: z.string().trim().max(60).optional(),
   courier: z.string().trim().max(60).optional(),
+  markPaid: z.boolean().optional(),
 });
 
-/** Updates fulfilment status from the admin page — same effect as the shipment webhook. */
+/** Updates fulfilment status from the admin page, and optionally marks payment received. */
 export const adminUpdateShipment = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => shipmentSchema.parse(data))
   .handler(async ({ data }) => {
     if (!checkPassword(data.password)) throw new Error("unauthorized");
 
-    const { updateShipment } = await import("@/lib/orders.server");
-    return updateShipment({
+    const { updateShipment, markOrderPaidByRef } = await import("@/lib/orders.server");
+    const result = await updateShipment({
       orderRef: data.orderRef,
       status: data.status,
       trackingNumber: data.trackingNumber,
       courier: data.courier,
     });
+
+    if (data.markPaid) {
+      await markOrderPaidByRef(data.orderRef);
+    }
+
+    return result;
   });

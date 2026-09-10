@@ -13,6 +13,8 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
+type OrderItem = { product_name: string; size: string; quantity: number };
+
 type Order = {
   id: string;
   order_ref: string;
@@ -24,12 +26,14 @@ type Order = {
   state: string;
   pincode: string;
   total: number;
+  advance_amount: number;
   payment_status: string;
   fulfilment_status: string;
   payment_provider: string;
   tracking_number: string | null;
   courier: string | null;
   created_at: string;
+  order_items: OrderItem[];
 };
 
 type Stats = {
@@ -40,6 +44,7 @@ type Stats = {
 
 const paymentColors: Record<string, string> = {
   paid: "text-green-700 bg-green-50",
+  partial: "text-blue-700 bg-blue-50",
   pending: "text-amber-700 bg-amber-50",
   failed: "text-red-700 bg-red-50",
   refunded: "text-slate-700 bg-slate-100",
@@ -69,17 +74,22 @@ function ShipmentForm({
   const [status, setStatus] = useState<"packed" | "shipped" | "delivered" | "cancelled">("shipped");
   const [trackingNumber, setTrackingNumber] = useState(order.tracking_number ?? "");
   const [courier, setCourier] = useState(order.courier ?? "");
+  const [markPaid, setMarkPaid] = useState(order.payment_status !== "paid");
   const update = useServerFn(adminUpdateShipment);
+
+  const remaining = order.total - order.advance_amount;
 
   const mutation = useMutation({
     mutationFn: () =>
-      update({ data: { password, orderRef: order.order_ref, status, trackingNumber, courier } }),
+      update({
+        data: { password, orderRef: order.order_ref, status, trackingNumber, courier, markPaid },
+      }),
     onSuccess: onDone,
   });
 
   return (
     <tr className="border-b border-border/60 bg-muted/30">
-      <td colSpan={8} className="p-4">
+      <td colSpan={9} className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-xs text-muted-foreground">Status</label>
@@ -110,6 +120,17 @@ function ShipmentForm({
               className="mt-1 h-10 border border-border bg-background px-2 text-sm"
             />
           </div>
+          {order.payment_status !== "paid" && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={markPaid}
+                onChange={(e) => setMarkPaid(e.target.checked)}
+                className="accent-walnut"
+              />
+              Mark payment received {remaining > 0 ? `(${formatPrice(remaining)} in cash)` : ""}
+            </label>
+          )}
           <button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
@@ -198,7 +219,8 @@ function Admin() {
         </div>
       )}
       <p className="mt-2 text-xs text-muted-foreground">
-        Revenue counts paid orders only. Order counts include every order placed, paid or not.
+        Revenue counts fully-paid orders only. COD advances show as "partial" until you mark cash
+        received.
       </p>
 
       <div className="mt-10 overflow-x-auto">
@@ -208,6 +230,7 @@ function Admin() {
               <th className="py-3 pr-4">Order</th>
               <th className="py-3 pr-4">Customer</th>
               <th className="py-3 pr-4">Address</th>
+              <th className="py-3 pr-4">Items</th>
               <th className="py-3 pr-4">Total</th>
               <th className="py-3 pr-4">Payment</th>
               <th className="py-3 pr-4">Fulfilment</th>
@@ -228,10 +251,22 @@ function Admin() {
                     <div className="text-xs text-muted-foreground">{o.customer_phone}</div>
                     <div className="text-xs text-muted-foreground">{o.customer_email}</div>
                   </td>
-                  <td className="py-3 pr-4 max-w-[220px] text-xs text-muted-foreground">
+                  <td className="py-3 pr-4 max-w-[200px] text-xs text-muted-foreground">
                     {o.address}, {o.city}, {o.state} {o.pincode}
                   </td>
-                  <td className="py-3 pr-4">{formatPrice(o.total)}</td>
+                  <td className="py-3 pr-4 max-w-[220px] text-xs text-muted-foreground">
+                    {(o.order_items ?? [])
+                      .map((i) => `${i.product_name} (${i.size}) ×${i.quantity}`)
+                      .join(", ")}
+                  </td>
+                  <td className="py-3 pr-4">
+                    {formatPrice(o.total)}
+                    {o.advance_amount > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {formatPrice(o.advance_amount)} advance
+                      </div>
+                    )}
+                  </td>
                   <td className="py-3 pr-4">
                     <span className={`rounded px-2 py-1 text-xs ${paymentColors[o.payment_status] ?? ""}`}>
                       {o.payment_status}

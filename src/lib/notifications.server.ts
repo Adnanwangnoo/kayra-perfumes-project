@@ -19,6 +19,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export type NotificationTemplate =
   | "order_placed"
   | "payment_confirmed"
+  | "advance_paid"
   | "payment_failed"
   | "order_shipped"
   | "order_delivered"
@@ -31,6 +32,7 @@ export type OrderRecord = {
   customer_email: string;
   customer_phone: string;
   total: number;
+  advance_amount?: number;
   whatsapp_opt_in: boolean;
   tracking_number?: string | null;
   courier?: string | null;
@@ -68,6 +70,13 @@ function copy(template: NotificationTemplate, order: OrderRecord) {
         subject: `Payment confirmed — order ${order.order_ref}`,
         body: `Hi ${first}, your payment of ${rupees(order.total)} for order ${order.order_ref} is confirmed. It is being hand-packed in Srinagar and will be dispatched within two working days.`,
       };
+    case "advance_paid": {
+      const remaining = order.total - (order.advance_amount ?? 0);
+      return {
+        subject: `Advance received — order ${order.order_ref}`,
+        body: `Hi ${first}, we've received your ${rupees(order.advance_amount ?? 0)} advance for order ${order.order_ref}. The remaining ${rupees(remaining)} is payable in cash when it's delivered. It's being hand-packed in Srinagar and will be dispatched within two working days.`,
+      };
+    }
     case "payment_failed":
       return {
         subject: `Payment couldn't be completed — order ${order.order_ref}`,

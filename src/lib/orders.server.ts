@@ -33,6 +33,9 @@ export type CustomerInput = {
 const SHIPPING_THRESHOLD = 99900;
 const SHIPPING_FLAT = 6900;
 
+/** Minimum non-refundable advance charged online for Cash on Delivery orders. */
+const COD_ADVANCE_PAISE = 15000; // ₹150
+
 export function priceOrder(lines: OrderLineInput[]) {
   const priced = lines.flatMap((line) => {
     const product = products.find((p) => p.variants.some((v) => v.sku === line.sku));
@@ -76,14 +79,16 @@ export async function createOrder(input: {
   if (pricing.lines.length === 0) throw new Error("empty_order");
 
   const ref = orderRef();
-  // COD is always the "manual" provider by design — no gateway involved.
-  // "online" uses whatever's actually configured (Razorpay, or a safe
-  // fallback to manual if it isn't).
-  const provider = input.paymentMethod === "cod" ? getProviderByName("manual") : getPaymentProvider();
+  const isCod = input.paymentMethod === "cod";
+  // COD still goes through the real payment provider — just for a small
+  // upfront advance instead of the full total. The rest is collected in cash.
+  const advanceAmount = isCod ? Math.min(COD_ADVANCE_PAISE, pricing.total) : 0;
+  const chargeAmount = isCod ? advanceAmount : pricing.total;
+  const provider = getPaymentProvider();
 
   let payment;
   try {
-    payment = await provider.createOrder({ orderRef: ref, amount: pricing.total });
+    payment = await provider.createOrder({ orderRef: ref, amount: chargeAmount });
   } catch {
     throw new Error("payment_unavailable");
   }
@@ -105,6 +110,7 @@ export async function createOrder(input: {
       subtotal: pricing.subtotal,
       shipping: pricing.shipping,
       total: pricing.total,
+      advance_amount: advanceAmount,
       payment_provider: payment.provider,
       provider_order_id: payment.providerOrderId,
     })
@@ -138,7 +144,9 @@ export async function createOrder(input: {
       status: payment.status,
       providerOrderId: payment.providerOrderId,
       publicKey: payment.publicKey,
-      amount: pricing.total,
+      amount: chargeAmount,
+      advanceAmount,
+      isCod,
     },
     customer: {
       name: input.customer.name,
@@ -166,7 +174,7 @@ async function getOrderByProviderOrderId(providerOrderId: string) {
   return data;
 }
 
-/** Marks an order paid (idempotent) and sends the confirmation messages. */
+/** Marks an order fully paid (idempotent) and sends the confirmation messages. */
 export async function markOrderPaid(
   orderId: string,
   detail: { providerPaymentId?: string | null; source: string },
@@ -183,7 +191,7 @@ export async function markOrderPaid(
     .from("orders")
     .update({
       payment_status: "paid",
-      fulfilment_status: "confirmed",
+      fulfilment_status: order.fulfilment_status === "pending" ? "confirmed" : order.fulfilment_status,
       failure_reason: null,
       provider_payment_id: detail.providerPaymentId ?? order.provider_payment_id,
     })
@@ -195,6 +203,55 @@ export async function markOrderPaid(
   await logOrderEvent(orderId, "payment_confirmed", { source: detail.source });
   await notifyOrder(fresh as OrderRecord, "payment_confirmed");
   return fresh;
+}
+
+/** Marks a COD order's upfront advance as received. Remainder stays due in cash. */
+export async function markOrderAdvancePaid(
+  orderId: string,
+  detail: { providerPaymentId?: string | null; source: string },
+) {
+  const { data: order } = await supabaseAdmin
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return null;
+  if (order.payment_status === "paid" || order.payment_status === "partial") return order;
+
+  const { data: updated } = await supabaseAdmin
+    .from("orders")
+    .update({
+      payment_status: "partial",
+      fulfilment_status: "confirmed",
+      failure_reason: null,
+      provider_payment_id: detail.providerPaymentId ?? order.provider_payment_id,
+    })
+    .eq("id", orderId)
+    .select("*")
+    .single();
+
+  const fresh = updated ?? order;
+  await logOrderEvent(orderId, "advance_paid", { source: detail.source });
+  await notifyOrder(fresh as OrderRecord, "advance_paid");
+  return fresh;
+}
+
+/** Routes a successful charge to the right status: partial (COD advance) or fully paid. */
+async function settlePayment(
+  order: { id: string; advance_amount?: number | null; payment_status: string },
+  detail: { providerPaymentId?: string | null; source: string },
+) {
+  if ((order.advance_amount ?? 0) > 0 && order.payment_status !== "paid") {
+    return markOrderAdvancePaid(order.id, detail);
+  }
+  return markOrderPaid(order.id, detail);
+}
+
+/** Marks an order fully paid from the admin page — e.g. COD cash collected on delivery. */
+export async function markOrderPaidByRef(ref: string) {
+  const order = await getOrderByRef(ref);
+  if (!order) return null;
+  return markOrderPaid(order.id, { source: "admin" });
 }
 
 /** Marks a payment attempt failed. The cart stays recoverable client-side. */
@@ -263,11 +320,14 @@ export async function verifyCheckoutPayment(input: {
     return { ok: false as const, status: "not_captured" as const };
   }
 
-  await markOrderPaid(order.id, {
+  const settled = await settlePayment(order, {
     providerPaymentId: input.providerPaymentId,
     source: "checkout",
   });
-  return { ok: true as const, status: "paid" as const };
+  return {
+    ok: true as const,
+    status: (settled?.payment_status === "partial" ? "partial" : "paid") as "paid" | "partial",
+  };
 }
 
 /** Records a provider webhook once. Returns false when already seen. */
@@ -298,7 +358,7 @@ export async function applyPaymentWebhook(input: {
   if (!order) return { handled: false as const };
 
   if (input.eventType === "payment.captured" || input.eventType === "order.paid") {
-    await markOrderPaid(order.id, {
+    await settlePayment(order, {
       providerPaymentId: input.providerPaymentId,
       source: "webhook",
     });

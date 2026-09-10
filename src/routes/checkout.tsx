@@ -48,7 +48,7 @@ const fields: Field[] = [
 type Confirmation = {
   orderRef: string;
   total: number;
-  paid: boolean;
+  status: "paid" | "partial" | "manual";
 };
 
 function Checkout() {
@@ -85,7 +85,7 @@ function Checkout() {
       const { payment } = order;
       // No live provider configured — the order is recorded and confirmed manually.
       if (!payment.providerOrderId || !payment.publicKey) {
-        return { orderRef: order.orderRef, total: order.pricing.total, paid: false };
+        return { orderRef: order.orderRef, total: order.pricing.total, status: "manual" as const };
       }
 
       const handoff = await openProviderCheckout({
@@ -124,7 +124,11 @@ function Checkout() {
       }
 
       track("payment_completed", { orderRef: order.orderRef, total: order.pricing.total });
-      return { orderRef: order.orderRef, total: order.pricing.total, paid: true };
+      return {
+        orderRef: order.orderRef,
+        total: order.pricing.total,
+        status: (verified.status === "partial" ? "partial" : "paid") as "paid" | "partial",
+      };
     },
     onSuccess: (result) => {
       setConfirmed(result);
@@ -150,19 +154,28 @@ function Checkout() {
   });
 
   if (confirmed) {
+    const heading =
+      confirmed.status === "paid"
+        ? "Payment confirmed"
+        : confirmed.status === "partial"
+          ? "Advance received"
+          : "Order received";
+
+    const message =
+      confirmed.status === "paid"
+        ? "A confirmation is on its way to you, and we'll message you again the moment it ships."
+        : confirmed.status === "partial"
+          ? "Your advance payment is confirmed. The remaining balance is payable in cash when your order is delivered — we'll keep you updated as it ships."
+          : "Our team will confirm payment and dispatch details with you shortly on the contact information you provided.";
+
     return (
       <div className="mx-auto max-w-xl px-5 py-40 text-center sm:px-8">
-        <p className="eyebrow text-muted-foreground">
-          {confirmed.paid ? "Payment confirmed" : "Order received"}
-        </p>
+        <p className="eyebrow text-muted-foreground">{heading}</p>
         <h1 className="display-lg mt-5">Thank you.</h1>
         <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
           Your order reference is{" "}
           <span className="text-foreground">{confirmed.orderRef}</span> for{" "}
-          {formatPrice(confirmed.total)}.{" "}
-          {confirmed.paid
-            ? "A confirmation is on its way to you, and we'll message you again the moment it ships."
-            : "Our team will confirm payment and dispatch details with you shortly on the contact information you provided."}
+          {formatPrice(confirmed.total)}. {message}
         </p>
         <Link to="/shop" className="eyebrow mt-10 inline-block border-b border-foreground pb-1">
           Continue shopping
@@ -245,7 +258,7 @@ function Checkout() {
             </label>
             <label className="flex items-start gap-3 text-sm text-muted-foreground">
               <input type="radio" name="paymentMethod" value="cod" className="mt-1 accent-walnut" />
-              Cash on delivery
+              Cash on delivery (₹150 advance payable now, rest on delivery)
             </label>
           </fieldset>
 
