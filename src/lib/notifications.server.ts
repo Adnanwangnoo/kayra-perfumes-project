@@ -34,6 +34,10 @@ export type OrderRecord = {
   whatsapp_opt_in: boolean;
   tracking_number?: string | null;
   courier?: string | null;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
 };
 
 const rupees = (paise: number) => `₹${(paise / 100).toFixed(0)}`;
@@ -174,5 +178,44 @@ export async function notifyOrder(order: OrderRecord, template: NotificationTemp
         await finish(waId, "failed", err instanceof Error ? err.message : "whatsapp_error");
       }
     }
+  }
+}
+
+/**
+ * Notifies the shop owner the moment a new order comes in. Separate from the
+ * customer notification system above — it's a single internal email, not
+ * tied to consent or the notifications table, and a failure here must never
+ * break checkout for the customer.
+ */
+export async function notifyOwnerOfOrder(
+  order: OrderRecord,
+  lines: { name: string; size: string; quantity: number; lineTotal: number }[],
+) {
+  const itemLines = lines
+    .map((l) => `• ${l.name} (${l.size}) × ${l.quantity} — ${rupees(l.lineTotal)}`)
+    .join("\n");
+
+  const subject = `New order ${order.order_ref} — ${rupees(order.total)}`;
+  const body = [
+    "New order received.",
+    "",
+    `Order: ${order.order_ref}`,
+    `Total: ${rupees(order.total)}`,
+    "",
+    "Items:",
+    itemLines,
+    "",
+    `Customer: ${order.customer_name}`,
+    `Phone: ${order.customer_phone}`,
+    `Email: ${order.customer_email}`,
+    order.address ? `Address: ${order.address}, ${order.city}, ${order.state} ${order.pincode}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  try {
+    await sendEmail(SUPPORT_EMAIL, subject, body);
+  } catch {
+    // Never let an owner-notification failure break the customer's checkout.
   }
 }

@@ -1,6 +1,11 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-import { notifyOrder, type NotificationTemplate, type OrderRecord } from "./notifications.server";
+import {
+  notifyOrder,
+  notifyOwnerOfOrder,
+  type NotificationTemplate,
+  type OrderRecord,
+} from "./notifications.server";
 import { getPaymentProvider, getProviderByName, type OrderLineInput } from "./payments/provider.server";
 import { products } from "./products";
 
@@ -123,6 +128,7 @@ export async function createOrder(input: {
 
   await logOrderEvent(order.id, "order_created", { total: pricing.total });
   await notifyOrder(order as OrderRecord, "order_placed");
+  await notifyOwnerOfOrder(order as OrderRecord, pricing.lines);
 
   return {
     orderRef: ref,
