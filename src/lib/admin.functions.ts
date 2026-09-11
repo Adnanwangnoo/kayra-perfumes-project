@@ -61,6 +61,25 @@ export const getOrderStats = createServerFn({ method: "POST" })
     return { today: bucket(startOfDay), month: bucket(startOfMonth), year: bucket(startOfYear) };
   });
 
+/** Full order history, unlimited, for Excel export. */
+export const exportOrders = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => authSchema.parse(data))
+  .handler(async ({ data }) => {
+    if (!checkPassword(data.password)) throw new Error("unauthorized");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: orders, error } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "order_ref, created_at, customer_name, customer_email, customer_phone, address, city, state, pincode, subtotal, shipping, total, advance_amount, payment_status, fulfilment_status, payment_provider, tracking_number, courier, order_items(product_name, size, quantity)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(20000);
+
+    if (error) throw new Error("fetch_failed");
+    return orders;
+  });
+
 const shipmentSchema = z.object({
   password: z.string().min(1),
   orderRef: z.string().trim().min(6).max(40),

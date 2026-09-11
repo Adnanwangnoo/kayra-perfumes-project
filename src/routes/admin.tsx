@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import * as XLSX from "xlsx";
 
-import { adminUpdateShipment, getOrderStats, listOrders } from "@/lib/admin.functions";
+import { adminUpdateShipment, exportOrders, getOrderStats, listOrders } from "@/lib/admin.functions";
 import { formatPrice } from "@/lib/products";
 
 export const Route = createFileRoute("/admin")({
@@ -33,6 +34,28 @@ type Order = {
   tracking_number: string | null;
   courier: string | null;
   created_at: string;
+  order_items: OrderItem[];
+};
+
+type ExportRow = {
+  order_ref: string;
+  created_at: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  subtotal: number;
+  shipping: number;
+  total: number;
+  advance_amount: number;
+  payment_status: string;
+  fulfilment_status: string;
+  payment_provider: string;
+  tracking_number: string | null;
+  courier: string | null;
   order_items: OrderItem[];
 };
 
@@ -151,6 +174,7 @@ function Admin() {
   const [editingRef, setEditingRef] = useState<string | null>(null);
   const fetchOrders = useServerFn(listOrders);
   const fetchStats = useServerFn(getOrderStats);
+  const fetchExport = useServerFn(exportOrders);
 
   const ordersQuery = useMutation({
     mutationFn: () => fetchOrders({ data: { password } }),
@@ -158,6 +182,36 @@ function Admin() {
   });
   const statsQuery = useMutation({
     mutationFn: () => fetchStats({ data: { password } }),
+  });
+  const exportMutation = useMutation({
+    mutationFn: () => fetchExport({ data: { password } }),
+    onSuccess: (rows) => {
+      const flat = (rows as ExportRow[]).map((o) => ({
+        "Order Ref": o.order_ref,
+        "Placed At": new Date(o.created_at).toLocaleString("en-IN"),
+        Customer: o.customer_name,
+        Email: o.customer_email,
+        Phone: o.customer_phone,
+        Address: `${o.address}, ${o.city}, ${o.state} ${o.pincode}`,
+        Items: (o.order_items ?? [])
+          .map((i) => `${i.product_name} (${i.size}) x${i.quantity}`)
+          .join("; "),
+        Subtotal: (o.subtotal / 100).toFixed(2),
+        Shipping: (o.shipping / 100).toFixed(2),
+        Total: (o.total / 100).toFixed(2),
+        Advance: (o.advance_amount / 100).toFixed(2),
+        "Payment Status": o.payment_status,
+        "Fulfilment Status": o.fulfilment_status,
+        "Payment Provider": o.payment_provider,
+        Tracking: o.tracking_number ?? "",
+        Courier: o.courier ?? "",
+      }));
+      const sheet = XLSX.utils.json_to_sheet(flat);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheet, "Orders");
+      const date = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `kayra-orders-${date}.xlsx`);
+    },
   });
 
   const refreshAll = () => {
@@ -206,9 +260,18 @@ function Admin() {
     <div className="mx-auto max-w-[1200px] px-5 pb-28 pt-32 sm:px-8 sm:pt-40">
       <div className="flex items-center justify-between">
         <h1 className="display-lg">Orders</h1>
-        <button onClick={refreshAll} className="eyebrow border-b border-foreground pb-1">
-          Refresh
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+            className="eyebrow border-b border-foreground pb-1"
+          >
+            {exportMutation.isPending ? "Exporting…" : "Export to Excel"}
+          </button>
+          <button onClick={refreshAll} className="eyebrow border-b border-foreground pb-1">
+            Refresh
+          </button>
+        </div>
       </div>
 
       {stats && (
@@ -220,7 +283,7 @@ function Admin() {
       )}
       <p className="mt-2 text-xs text-muted-foreground">
         Revenue counts fully-paid orders only. COD advances show as "partial" until you mark cash
-        received.
+        received. Export always includes the full order history to date.
       </p>
 
       <div className="mt-10 overflow-x-auto">
