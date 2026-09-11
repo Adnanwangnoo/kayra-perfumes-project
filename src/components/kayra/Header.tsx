@@ -9,6 +9,7 @@ import { SearchOverlay } from "@/components/kayra/SearchOverlay";
 const nav = [
   { to: "/", label: "Home" },
   { to: "/shop", label: "Shop" },
+  { to: "/gallery", label: "Gallery" },
   { to: "/about", label: "The House" },
   { to: "/contact", label: "Contact" },
 ] as const;
