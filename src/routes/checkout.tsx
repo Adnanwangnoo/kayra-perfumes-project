@@ -64,7 +64,7 @@ function Checkout() {
       const order = await submit({
         data: {
           lines: cart.resolved.map((l) => ({ sku: l.sku, quantity: l.quantity })),
-          paymentMethod: String(form.get("paymentMethod") ?? "online") as "online" | "cod",
+          paymentMethod: "online" as const,
           customer: {
             name: String(form.get("name") ?? ""),
             email: String(form.get("email") ?? ""),
@@ -246,20 +246,9 @@ function Checkout() {
 
           <fieldset className="sm:col-span-2 space-y-3 border-t border-border pt-6">
             <legend className="eyebrow text-muted-foreground">Payment method</legend>
-            <label className="flex items-start gap-3 text-sm text-muted-foreground">
-              <input
-                type="radio"
-                name="paymentMethod"
-                value="online"
-                defaultChecked
-                className="mt-1 accent-walnut"
-              />
-              Pay online (Razorpay)
-            </label>
-            <label className="flex items-start gap-3 text-sm text-muted-foreground">
-              <input type="radio" name="paymentMethod" value="cod" className="mt-1 accent-walnut" />
-              Cash on delivery (₹150 advance payable now, rest on delivery)
-            </label>
+            <p className="text-sm text-muted-foreground">
+              Pay securely online with Razorpay: UPI, cards, net banking and wallets.
+            </p>
           </fieldset>
 
           <fieldset className="sm:col-span-2 space-y-3 border-t border-border pt-6">
